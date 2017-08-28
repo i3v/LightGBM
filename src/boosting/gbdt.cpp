@@ -973,46 +973,53 @@ bool GBDT::SaveModelToIfElse(int num_iteration, const char* filename) const {
 }
 
 std::string GBDT::SaveModelToString(int num_iteration) const {
-  std::stringstream ss;
+
+  // Currently, MSVS fails to concatenate long strings (>2GB) via `std::stringstream`
+  // https://social.msdn.microsoft.com/Forums/vstudio/en-US/a2bf0057-6d72-4b22-b29f-76c2c2afca3c/maximum-length-of-stdstringstream-on-x64?forum=vclanguage
+  // Thus, using `std::string` for the only really long section.
+  std::stringstream ss1;  
+  std::stringstream ss2;
+  std::string mdl_s = "";  
 
   // output model type
-  ss << SubModelName() << std::endl;
+  ss1 << SubModelName() << std::endl;
   // output number of class
-  ss << "num_class=" << num_class_ << std::endl;
-  ss << "num_tree_per_iteration=" << num_tree_per_iteration_ << std::endl;
+  ss1 << "num_class=" << num_class_ << std::endl;
+  ss1 << "num_tree_per_iteration=" << num_tree_per_iteration_ << std::endl;
   // output label index
-  ss << "label_index=" << label_idx_ << std::endl;
+  ss1 << "label_index=" << label_idx_ << std::endl;
   // output max_feature_idx
-  ss << "max_feature_idx=" << max_feature_idx_ << std::endl;
+  ss1 << "max_feature_idx=" << max_feature_idx_ << std::endl;
   // output objective
   if (objective_function_ != nullptr) {
-    ss << "objective=" << objective_function_->ToString() << std::endl;
+    ss1 << "objective=" << objective_function_->ToString() << std::endl;
   }
 
   if (boost_from_average_) {
-    ss << "boost_from_average" << std::endl;
+    ss1 << "boost_from_average" << std::endl;
   }
 
   if (average_output_) {
-    ss << "average_output" << std::endl;
+    ss1 << "average_output" << std::endl;
   }
 
-  ss << "feature_names=" << Common::Join(feature_names_, " ") << std::endl;
+  ss1 << "feature_names=" << Common::Join(feature_names_, " ") << std::endl;
 
-  ss << "feature_infos=" << Common::Join(feature_infos_, " ") << std::endl;
+  ss1 << "feature_infos=" << Common::Join(feature_infos_, " ") << std::endl;
 
+  ss1 << std::endl;
   std::vector<double> feature_importances = FeatureImportance(num_iteration, 0);
 
-  ss << std::endl;
+  ss1 << std::endl;  
   int num_used_model = static_cast<int>(models_.size());
   if (num_iteration > 0) {
     num_iteration += boost_from_average_ ? 1 : 0;
     num_used_model = std::min(num_iteration * num_tree_per_iteration_, num_used_model);
   }
   // output tree models
-  for (int i = 0; i < num_used_model; ++i) {
-    ss << "Tree=" << i << std::endl;
-    ss << models_[i]->ToString() << std::endl;
+  for (int i = 0; i < num_used_model; ++i) {	  
+	mdl_s += "Tree=" + std::to_string(i) + '\n';
+    mdl_s += models_[i]->ToString() + '\n';
   }
 
   // store the importance first
@@ -1029,12 +1036,12 @@ std::string GBDT::SaveModelToString(int num_iteration) const {
                 const std::pair<size_t, std::string>& rhs) {
     return lhs.first > rhs.first;
   });
-  ss << std::endl << "feature importances:" << std::endl;
+  ss2 << std::endl << "feature importances:" << std::endl;
   for (size_t i = 0; i < pairs.size(); ++i) {
-    ss << pairs[i].second << "=" << std::to_string(pairs[i].first) << std::endl;
+    ss2 << pairs[i].second << "=" << std::to_string(pairs[i].first) << std::endl;
   }
 
-  return ss.str();
+  return ss1.str() + mdl_s + ss2.str();
 }
 
 bool GBDT::SaveModelToFile(int num_iteration, const char* filename) const {
