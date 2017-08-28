@@ -89,10 +89,12 @@ typedef union { VECTOR_SER s; double align; } SEXPREC_ALIGN;
 #define R_CHAR_PTR(x)     ((char *) DATAPTR(x))
 
 #define R_INT_PTR(x)  ((int *) DATAPTR(x))
+#define R_INT64_PTR(x)  ((int64_t *) DATAPTR(x))
 
 #define R_REAL_PTR(x)     ((double *) DATAPTR(x))
 
 #define R_AS_INT(x) (*((int *) DATAPTR(x)))
+#define R_AS_INT64(x) (*((int64_t *) DATAPTR(x)))
 
 #define R_IS_NULL(x) ((*(LGBM_SE)(x)).sxpinfo.type == 0)
 

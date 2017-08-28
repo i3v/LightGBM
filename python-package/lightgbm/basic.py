@@ -1573,27 +1573,35 @@ class Booster(object):
         if num_iteration <= 0:
             num_iteration = self.best_iteration
         buffer_len = 1 << 20
-        tmp_out_len = ctypes.c_int(0)
-        string_buffer = ctypes.create_string_buffer(buffer_len)
+        tmp_out_len = ctypes.c_int64(0)
+
+        # Currently, ctypes fails to allocate >2GB char buffers due to https://bugs.python.org/issue16865
+        # Thus, manually allocating raw `bytearray`, without letting ctypes to know the actual length.
+        raw_buffer = bytearray(buffer_len)
+        string_buffer = (ctypes.c_char).from_buffer(raw_buffer)
         ptr_string_buffer = ctypes.c_char_p(*[ctypes.addressof(string_buffer)])
+
         _safe_call(_LIB.LGBM_BoosterSaveModelToString(
             self.handle,
             ctypes.c_int(num_iteration),
-            ctypes.c_int(buffer_len),
+            ctypes.c_int64(buffer_len),
             ctypes.byref(tmp_out_len),
             ptr_string_buffer))
         actual_len = tmp_out_len.value
         '''if buffer length is not long enough, re-allocate a buffer'''
         if actual_len > buffer_len:
-            string_buffer = ctypes.create_string_buffer(actual_len)
+            # string_buffer = ctypes.create_string_buffer(actual_len)
+            raw_buffer = bytearray(actual_len)
+            string_buffer = (ctypes.c_char).from_buffer(raw_buffer)
             ptr_string_buffer = ctypes.c_char_p(*[ctypes.addressof(string_buffer)])
+
             _safe_call(_LIB.LGBM_BoosterSaveModelToString(
                 self.handle,
                 ctypes.c_int(num_iteration),
-                ctypes.c_int(actual_len),
+                ctypes.c_int64(actual_len),
                 ctypes.byref(tmp_out_len),
                 ptr_string_buffer))
-        return string_buffer.value.decode()
+        return raw_buffer.decode()
 
     def dump_model(self, num_iteration=-1):
         """
